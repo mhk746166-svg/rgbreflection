@@ -1,287 +1,370 @@
 
-html_content = r"""<!DOCTYPE html>
+html = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>빛의 3원색 — 손전등 색 만들기</title>
+<title>빛의 3원색 색맞추기 게임</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin:0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; background:#0a0a0a; color:#fff; }
-  .wrap { display:grid; grid-template-columns: 1fr 360px; gap:16px; padding:16px; max-width:1200px; margin:0 auto; }
-  @media (max-width:900px) { .wrap { grid-template-columns: 1fr; } }
-  h1 { font-size:20px; margin:0 0 12px 0; }
-  canvas { width:100%; height:auto; background:#000; border-radius:12px; display:block; }
-  .panel { background:#1a1a1a; border:1px solid #333; border-radius:12px; padding:16px; }
-  .slider-row { margin-bottom:14px; }
-  .slider-row label { display:flex; justify-content:space-between; font-weight:700; margin-bottom:6px; font-size:14px; }
-  input[type=range] { width:100%; height:6px; -webkit-appearance:none; appearance:none; background:#333; border-radius:3px; outline:none; }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid #fff; }
-  input[type=range].r::-webkit-slider-thumb { background:#ff3b3b; }
-  input[type=range].g::-webkit-slider-thumb { background:#22dd55; }
-  input[type=range].b::-webkit-slider-thumb { background:#3b6dff; }
-  .swatch { display:flex; align-items:center; gap:12px; margin:12px 0; padding:10px; background:#0a0a0a; border-radius:8px; border:1px solid #333; }
-  .swatch-box { width:64px; height:64px; border-radius:8px; border:2px solid #555; flex-shrink:0; }
-  .hex { font-family: 'Courier New', monospace; font-size:15px; font-weight:700; }
-  .rgbtxt { font-family: monospace; font-size:12px; color:#888; }
-  .chips { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
-  .chip { padding:6px 10px; background:#2a2a2a; border:1px solid #444; border-radius:6px; cursor:pointer; font-size:12px; user-select:none; }
-  .chip:hover { background:#3a3a3a; }
-  hr { border:none; border-top:1px solid #333; margin:14px 0; }
-  .form-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px; }
-  .form-row { margin-bottom:8px; }
-  .form-row input, .form-grid input { width:100%; padding:10px; background:#0a0a0a; border:1px solid #444; color:#fff; border-radius:6px; font-size:14px; font-family: inherit; }
-  .form-row input:focus, .form-grid input:focus { outline:none; border-color:#3b6dff; }
-  .submit-btn { width:100%; padding:14px; background:linear-gradient(135deg,#3b6dff,#9b3bff); color:#fff; border:none; border-radius:8px; font-weight:700; font-size:16px; cursor:pointer; margin-top:8px; }
-  .submit-btn:hover { opacity:0.9; }
-  .submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
-  .hint { font-size:11px; color:#888; margin-top:6px; line-height:1.5; }
-  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 24px; border-radius:8px; font-weight:600; z-index:100; box-shadow: 0 4px 20px rgba(0,0,0,0.5); animation: slideUp 0.3s; }
-  .toast.ok { background:#10b981; }
-  .toast.err { background:#ef4444; }
-  @keyframes slideUp { from { opacity:0; transform: translate(-50%, 20px); } to { opacity:1; transform: translate(-50%, 0); } }
+  body {
+    margin: 0; font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0b0d12; color: #e7e9ee; min-height: 100vh;
+  }
+  .wrap {
+    max-width: 1200px; margin: 0 auto; padding: 20px;
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px;
+  }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: #9aa3b2; font-size: 13px; margin-bottom: 14px; }
+  .stage {
+    background: #000; border-radius: 14px; overflow: hidden;
+    border: 1px solid #1c2230; aspect-ratio: 4/3; position: relative;
+  }
+  canvas { width: 100%; height: 100%; display: block; }
+  .panel {
+    background: #131722; border: 1px solid #1c2230; border-radius: 14px;
+    padding: 18px;
+  }
+  .row { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; margin-bottom: 6px; color: #c8cdd8; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row .val {
+    width: 42px; text-align: right; font-variant-numeric: tabular-nums;
+    font-size: 13px; color: #c8cdd8;
+  }
+  input[type=range] { -webkit-appearance: none; height: 6px; border-radius: 4px; outline: none; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; border: 2px solid #2563eb; cursor: pointer;
+  }
+  .r-track { background: linear-gradient(to right, #200, #f00); }
+  .g-track { background: linear-gradient(to right, #020, #0f0); }
+  .b-track { background: linear-gradient(to right, #002, #00f); }
+
+  .preview-row { display: flex; align-items: center; gap: 12px; }
+  .swatch {
+    width: 70px; height: 70px; border-radius: 12px; border: 2px solid #2a3142;
+    flex-shrink: 0;
+  }
+  .codes { font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.7; }
+  .codes b { color: #fff; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    border: 1px solid #2a3142; background: #1a1f2c; color: #c8cdd8;
+  }
+  .chip:hover { border-color: #4a5468; }
+
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; }
+  .input-grid input {
+    background: #0b0d12; border: 1px solid #2a3142; color: #fff;
+    padding: 9px 10px; border-radius: 8px; font-size: 14px; width: 100%;
+  }
+  .input-grid input:focus { outline: none; border-color: #2563eb; }
+
+  .submit-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff;
+    font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px;
+  }
+  .submit-btn:hover { filter: brightness(1.1); }
+  .submit-btn:disabled { opacity: 0.6; cursor: wait; }
+
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #131722; border: 1px solid #2a3142; padding: 12px 18px;
+    border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .3s;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+  .toast.ok { border-color: #16a34a; }
+  .toast.err { border-color: #dc2626; }
+
+  hr { border: none; border-top: 1px solid #1c2230; margin: 14px 0; }
+  .hint { font-size: 12px; color: #6b7280; line-height: 1.5; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div>
-    <h1>🔦 빛의 3원색 — 손전등 색 만들기</h1>
-    <canvas id="cv" width="600" height="600"></canvas>
-  </div>
-  <div class="panel">
-    <div class="slider-row">
-      <label><span style="color:#ff5050">🔴 빨강 (R)</span><span id="rv">0</span></label>
-      <input type="range" class="r" id="r" min="0" max="255" value="0">
-    </div>
-    <div class="slider-row">
-      <label><span style="color:#22dd55">🟢 초록 (G)</span><span id="gv">0</span></label>
-      <input type="range" class="g" id="g" min="0" max="255" value="0">
-    </div>
-    <div class="slider-row">
-      <label><span style="color:#5588ff">🔵 파랑 (B)</span><span id="bv">0</span></label>
-      <input type="range" class="b" id="b" min="0" max="255" value="0">
-    </div>
-
-    <div class="swatch">
-      <div class="swatch-box" id="sw"></div>
-      <div>
-        <div class="hex" id="hex">#000000</div>
-        <div class="rgbtxt" id="rgbtxt">rgb(0, 0, 0)</div>
+  <div class="wrap">
+    <!-- 좌측: 시뮬레이션 무대 -->
+    <div>
+      <h1>🎨 빛의 3원색 색맞추기</h1>
+      <div class="sub">손전등 3개의 세기를 조절해서 선생님이 보여주는 색과 똑같이 만들어 보세요!</div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="800" height="600"></canvas>
       </div>
     </div>
 
-    <div class="chips">
-      <div class="chip" data-rgb="255,255,0">노랑</div>
-      <div class="chip" data-rgb="0,255,255">청록</div>
-      <div class="chip" data-rgb="255,0,255">자홍</div>
-      <div class="chip" data-rgb="255,255,255">흰색</div>
-      <div class="chip" data-rgb="0,0,0">끄기</div>
-    </div>
+    <!-- 우측: 컨트롤 -->
+    <div class="panel">
+      <div class="row">
+        <div class="slider-row">
+          <div class="dot" style="background:#ff3b3b"></div>
+          <label style="margin:0;flex:1">빨강 (R)</label>
+          <span class="val" id="rVal">0</span>
+        </div>
+        <input type="range" min="0" max="255" value="0" id="r" class="r-track" style="width:100%">
+      </div>
+      <div class="row">
+        <div class="slider-row">
+          <div class="dot" style="background:#3bff3b"></div>
+          <label style="margin:0;flex:1">초록 (G)</label>
+          <span class="val" id="gVal">0</span>
+        </div>
+        <input type="range" min="0" max="255" value="0" id="g" class="g-track" style="width:100%">
+      </div>
+      <div class="row">
+        <div class="slider-row">
+          <div class="dot" style="background:#3b8bff"></div>
+          <label style="margin:0;flex:1">파랑 (B)</label>
+          <span class="val" id="bVal">0</span>
+        </div>
+        <input type="range" min="0" max="255" value="0" id="b" class="b-track" style="width:100%">
+      </div>
 
-    <hr>
+      <hr>
 
-    <div class="form-grid">
-      <input id="cls" placeholder="반" type="number" min="1">
-      <input id="num" placeholder="번호" type="number" min="1">
+      <div class="row">
+        <label>현재 만든 색 (미리보기)</label>
+        <div class="preview-row">
+          <div class="swatch" id="swatch"></div>
+          <div class="codes">
+            HEX: <b id="hexCode">#000000</b><br>
+            RGB: <b id="rgbCode">0, 0, 0</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>빠른 실험</label>
+        <div class="chips">
+          <span class="chip" data-c="255,255,0">노랑</span>
+          <span class="chip" data-c="0,255,255">청록</span>
+          <span class="chip" data-c="255,0,255">자홍</span>
+          <span class="chip" data-c="255,255,255">흰색</span>
+          <span class="chip" data-c="0,0,0">끄기</span>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="row">
+        <label>학생 정보</label>
+        <div class="input-grid">
+          <input type="text" id="classNum" placeholder="반" maxlength="3">
+          <input type="text" id="studentNum" placeholder="번호" maxlength="3">
+          <input type="text" id="name" placeholder="이름" maxlength="10">
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit">📨 결과 제출</button>
+      <div class="hint" style="margin-top:10px">
+        제출하면 선생님 화면(구글 시트)에 내가 만든 색과 함께 등록돼요.
+      </div>
     </div>
-    <div class="form-row"><input id="name" placeholder="이름" type="text"></div>
-    <button class="submit-btn" id="submit">📨 결과 제출하기</button>
-    <div class="hint">제출하면 선생님 시트에 만든 색깔이 셀 배경색으로 자동 기록됩니다.<br>선생님이 목표 HEX를 입력하면 유사도가 자동 계산돼요.</div>
   </div>
-</div>
+
+  <div class="toast" id="toast"></div>
 
 <script>
-// ⚠️ 선생님: 아래 URL을 본인 Apps Script 웹앱 URL로 교체하세요 ⚠️
+// ============================================================
+// ⚠️ 선생님: 아래 URL을 본인의 Google Apps Script 웹앱 URL로 교체하세요!
+// ============================================================
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVBnWHXXRP06_tnqiBETMoyrTcdPqw06A4s5xOuiWNrGZJ0spqY7U0xid7clUyuk_51w/exec";
 
-const canvas = document.getElementById('cv');
-const ctx = canvas.getContext('2d');
-let R=0, G=0, B=0;
+// ----- 상태 -----
+const state = { r: 0, g: 0, b: 0 };
 
-function drawFlashlightBody(x) {
-  // 손전등 본체 (사다리꼴 모양, 위쪽 좁고 아래 넓음)
-  ctx.fillStyle = '#2a2a2a';
-  ctx.strokeStyle = '#666';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x-22, 15);
-  ctx.lineTo(x+22, 15);
-  ctx.lineTo(x+34, 75);
-  ctx.lineTo(x-34, 75);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // 손잡이 끝 검은 부분
-  ctx.fillStyle = '#000';
-  ctx.fillRect(x-18, 8, 36, 8);
-  // LED 부분
-  ctx.fillStyle = '#444';
-  ctx.fillRect(x-30, 72, 60, 6);
-}
+// ----- DOM -----
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const swatch = document.getElementById('swatch');
+const hexCode = document.getElementById('hexCode');
+const rgbCode = document.getElementById('rgbCode');
 
-function drawBeam(x, colorRGB, intensity) {
-  if (intensity <= 0) return;
-  const topY = 78;
-  const meetX = 300, meetY = 480;
-  const beamRadius = 110; // 모이는 원의 반경
-
-  // 손전등 헤드의 좌우 끝
-  const headLeft = x - 28;
-  const headRight = x + 28;
-
-  // 모이는 지점 도달부의 좌우 끝 (모이는 원의 가장자리)
-  // 손전등에서 모이는 점으로 향하는 방향 벡터 기준 좌우 perpendicular
-  const dx = meetX - x;
-  const dy = meetY - topY;
-  const len = Math.sqrt(dx*dx + dy*dy);
-  const px = -dy/len * beamRadius * 0.55; // 수직 방향 옵셋
-  const py = dx/len * beamRadius * 0.55;
-
-  const a = intensity / 255;
-
-  // 그라디언트 (위는 진하고 아래로 갈수록 살짝 옅어짐)
-  const grad = ctx.createLinearGradient(x, topY, meetX, meetY);
-  grad.addColorStop(0, `rgba(${colorRGB},${a*0.95})`);
-  grad.addColorStop(1, `rgba(${colorRGB},${a*0.7})`);
-  ctx.fillStyle = grad;
-
-  ctx.beginPath();
-  ctx.moveTo(headLeft, topY);
-  ctx.lineTo(headRight, topY);
-  ctx.lineTo(meetX + px, meetY + py - 30);
-  ctx.lineTo(meetX - px, meetY - py - 30);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function render() {
-  // 배경 (어두운 방)
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, 600);
-  bgGrad.addColorStop(0, '#050505');
-  bgGrad.addColorStop(1, '#0a0a0a');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 600, 600);
-
-  // 손전등 본체 (3개)
-  drawFlashlightBody(150);
-  drawFlashlightBody(300);
-  drawFlashlightBody(450);
-
-  // 빔: 가산혼합 (lighter)
-  ctx.globalCompositeOperation = 'lighter';
-  drawBeam(150, '255,40,40', R);
-  drawBeam(300, '40,255,40', G);
-  drawBeam(450, '40,80,255', B);
-
-  // 바닥 원 — 빛이 모이는 자리
-  const cx = 300, cy = 480, rad = 110;
-
-  // 외곽 글로우 (전체 색의 합으로 부드럽게 빛남)
-  if (R+G+B > 0) {
-    const glow = ctx.createRadialGradient(cx, cy, rad*0.6, cx, cy, rad*1.8);
-    glow.addColorStop(0, `rgba(${R},${G},${B},0.5)`);
-    glow.addColorStop(1, `rgba(${R},${G},${B},0)`);
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(cx, cy, rad*1.8, 0, Math.PI*2); ctx.fill();
-  }
-
-  // 원 안 색상 — R, G, B를 차례로 그려서 lighter 모드로 가산혼합
-  ctx.fillStyle = `rgba(${R},0,0,1)`;
-  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = `rgba(0,${G},0,1)`;
-  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = `rgba(0,0,${B},1)`;
-  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.fill();
-
-  ctx.globalCompositeOperation = 'source-over';
-
-  // 원 테두리
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.stroke();
-
-  // UI 업데이트
-  const toHex = v => v.toString(16).padStart(2,'0').toUpperCase();
-  const hex = '#' + toHex(R) + toHex(G) + toHex(B);
-  document.getElementById('sw').style.background = `rgb(${R},${G},${B})`;
-  document.getElementById('hex').textContent = hex;
-  document.getElementById('rgbtxt').textContent = `rgb(${R}, ${G}, ${B})`;
-  document.getElementById('rv').textContent = R;
-  document.getElementById('gv').textContent = G;
-  document.getElementById('bv').textContent = B;
-}
-
-['r','g','b'].forEach(c => {
-  document.getElementById(c).addEventListener('input', e => {
-    const v = +e.target.value;
-    if(c==='r') R = v;
-    if(c==='g') G = v;
-    if(c==='b') B = v;
-    render();
+// ----- 슬라이더 바인딩 -----
+['r','g','b'].forEach(k => {
+  const el = document.getElementById(k);
+  const val = document.getElementById(k + 'Val');
+  el.addEventListener('input', () => {
+    state[k] = parseInt(el.value, 10);
+    val.textContent = state[k];
+    update();
   });
 });
 
-document.querySelectorAll('.chip').forEach(c => {
-  c.addEventListener('click', () => {
-    const [r,g,b] = c.dataset.rgb.split(',').map(Number);
-    R=r; G=g; B=b;
+// ----- 빠른 실험 칩 -----
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const [r,g,b] = chip.dataset.c.split(',').map(Number);
+    state.r = r; state.g = g; state.b = b;
     document.getElementById('r').value = r;
     document.getElementById('g').value = g;
     document.getElementById('b').value = b;
-    render();
+    document.getElementById('rVal').textContent = r;
+    document.getElementById('gVal').textContent = g;
+    document.getElementById('bVal').textContent = b;
+    update();
   });
 });
 
-function toast(msg, ok=true) {
-  const t = document.createElement('div');
-  t.className = 'toast ' + (ok?'ok':'err');
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(), 3000);
+// ----- 색 변환 -----
+function toHex(n) { return n.toString(16).padStart(2,'0'); }
+function rgbToHex(r,g,b) { return '#' + toHex(r) + toHex(g) + toHex(b); }
+
+// ----- 캔버스 그리기 -----
+function drawFlashlight(x, y, color) {
+  // 손전등 본체 (위쪽 사각형)
+  ctx.fillStyle = '#1a1f2c';
+  ctx.strokeStyle = '#3a4258';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x - 28, y - 50, 56, 50, 8);
+  ctx.fill();
+  ctx.stroke();
+  // 손전등 헤드 (아래쪽 사다리꼴)
+  ctx.fillStyle = '#2a3142';
+  ctx.beginPath();
+  ctx.moveTo(x - 30, y - 5);
+  ctx.lineTo(x + 30, y - 5);
+  ctx.lineTo(x + 38, y + 15);
+  ctx.lineTo(x - 38, y + 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // 렌즈 (색이 비치는 부분)
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 14, 36, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
+function drawBeam(headX, headY, floorX, floorY, headW, floorW, color, intensity) {
+  // 빔(사다리꼴) - 위에서 아래로 퍼지는 빛
+  const grad = ctx.createLinearGradient(0, headY, 0, floorY);
+  grad.addColorStop(0, `rgba(${color},${0.55 * intensity})`);
+  grad.addColorStop(1, `rgba(${color},${0.15 * intensity})`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(headX - headW, headY);
+  ctx.lineTo(headX + headW, headY);
+  ctx.lineTo(floorX + floorW, floorY);
+  ctx.lineTo(floorX - floorW, floorY);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function update() {
+  const W = cv.width, H = cv.height;
+  // 검은 배경
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // 손전등 위치 (위쪽)
+  const headY = 70;
+  const fxR = 180, fxG = 400, fxB = 620;
+  // 빛이 모이는 바닥 위치
+  const floorY = 470;
+  const floorCx = 400;
+  const floorR = 110;
+
+  // ---- 빔 그리기 (가산혼합) ----
+  ctx.globalCompositeOperation = 'lighter';
+  drawBeam(fxR, headY + 20, floorCx, floorY, 28, floorR, '255,40,40', state.r / 255);
+  drawBeam(fxG, headY + 20, floorCx, floorY, 28, floorR, '40,255,40', state.g / 255);
+  drawBeam(fxB, headY + 20, floorCx, floorY, 28, floorR, '60,140,255', state.b / 255);
+  ctx.globalCompositeOperation = 'source-over';
+
+  // ---- 중앙 합성 원: 정확한 RGB 단색으로 덮어칠하기 ⭐ ----
+  // (미리보기 스와치와 픽셀 단위 일치)
+  const exactColor = `rgb(${state.r},${state.g},${state.b})`;
+  // 부드러운 외곽 글로우
+  const glow = ctx.createRadialGradient(floorCx, floorY, floorR * 0.6, floorCx, floorY, floorR * 1.4);
+  glow.addColorStop(0, `rgba(${state.r},${state.g},${state.b},0.5)`);
+  glow.addColorStop(1, `rgba(${state.r},${state.g},${state.b},0)`);
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(floorCx, floorY, floorR * 1.4, floorR * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // 중앙 정확한 단색 원
+  ctx.fillStyle = exactColor;
+  ctx.beginPath();
+  ctx.ellipse(floorCx, floorY, floorR, floorR * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ---- 손전등 본체 그리기 ----
+  drawFlashlight(fxR, headY, `rgba(255,40,40,${0.3 + state.r/255 * 0.7})`);
+  drawFlashlight(fxG, headY, `rgba(40,255,40,${0.3 + state.g/255 * 0.7})`);
+  drawFlashlight(fxB, headY, `rgba(60,140,255,${0.3 + state.b/255 * 0.7})`);
+
+  // ---- 우측 미리보기 ----
+  swatch.style.background = exactColor;
+  hexCode.textContent = rgbToHex(state.r, state.g, state.b).toUpperCase();
+  rgbCode.textContent = `${state.r}, ${state.g}, ${state.b}`;
+}
+
+// ----- 토스트 -----
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast ' + type; }, 2500);
+}
+
+// ----- 결과 제출 -----
 document.getElementById('submit').addEventListener('click', async () => {
-  const cls = document.getElementById('cls').value.trim();
-  const num = document.getElementById('num').value.trim();
+  const classNum = document.getElementById('classNum').value.trim();
+  const studentNum = document.getElementById('studentNum').value.trim();
   const name = document.getElementById('name').value.trim();
-  if (!cls || !num || !name) {
-    toast('반 / 번호 / 이름을 모두 입력해주세요!', false);
+  if (!classNum || !studentNum || !name) {
+    toast('반·번호·이름을 모두 입력해주세요!', 'err');
     return;
   }
-  const toHex = v => v.toString(16).padStart(2,'0').toUpperCase();
-  const hex = '#' + toHex(R) + toHex(G) + toHex(B);
+  if (GOOGLE_SCRIPT_URL.includes('여기에')) {
+    toast('선생님이 시트 URL을 아직 설정하지 않았어요.', 'err');
+    return;
+  }
 
   const btn = document.getElementById('submit');
   btn.disabled = true;
   btn.textContent = '제출 중...';
+
+  const payload = {
+    classNum, studentNum, name,
+    hex: rgbToHex(state.r, state.g, state.b).toUpperCase(),
+    r: state.r, g: state.g, b: state.b
+  };
 
   try {
     await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ classNum: cls, studentNum: num, name, hex, r:R, g:G, b:B })
+      body: JSON.stringify(payload)
     });
-    toast('✅ 제출 완료! 선생님 화면을 확인하세요.');
-    document.getElementById('name').value = '';
-    document.getElementById('num').value = '';
-    document.getElementById('name').focus();
-  } catch(e) {
-    toast('❌ 제출 실패. 인터넷 연결을 확인하세요.', false);
+    toast(`✅ ${name} 학생, 제출 완료!`, 'ok');
+  } catch (err) {
+    toast('제출 실패: 네트워크를 확인하세요.', 'err');
   } finally {
     btn.disabled = false;
-    btn.textContent = '📨 결과 제출하기';
+    btn.textContent = '📨 결과 제출';
   }
 });
 
-render();
+// 초기 그리기
+update();
 </script>
 </body>
 </html>
 """
 
-with open('/home/user/light_rgb_game.html', 'w', encoding='utf-8') as f:
-    f.write(html_content)
+with open('/tmp/light_rgb_game.html', 'w', encoding='utf-8') as f:
+    f.write(html)
 
-print(f"파일 크기: {len(html_content)} bytes")
-print("저장 완료: /home/user/light_rgb_game.html")
+print(f"파일 크기: {len(html):,} bytes")
+print("저장 완료: /tmp/light_rgb_game.html")
