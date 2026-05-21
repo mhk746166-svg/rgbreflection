@@ -2,354 +2,340 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>디스플레이 화소(Pixel)와 빛의 3원색</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>디스플레이 화소(Pixel) 가산혼합 시뮬레이션</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Noto Sans KR"', 'sans-serif'] },
+                    colors: {
+                        darkBg: '#0f172a',
+                        glassBg: 'rgba(30, 41, 59, 0.75)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- React & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
-        body { font-family: 'Pretendard', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
         .glass-panel {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
-        /* Custom Sliders */
+        .btn-press {
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+        /* Range Slider Styling */
         input[type=range] {
-            -webkit-appearance: none; width: 100%; background: transparent; height: 8px; border-radius: 4px; outline: none;
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: #ffffff;
-            cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); border: 2px solid #334155;
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
-        #slider-r { background: linear-gradient(90deg, #475569, #ef4444); }
-        #slider-g { background: linear-gradient(90deg, #475569, #22c55e); }
-        #slider-b { background: linear-gradient(90deg, #475569, #3b82f6); }
-        #slider-zoom { background: linear-gradient(90deg, #334155, #f59e0b); height: 12px; }
-        #slider-zoom::-webkit-slider-thumb { height: 32px; width: 32px; border: 3px solid #f59e0b; }
-
-        .btn-press:active { transform: scale(0.95); }
-
-        /* Smartphone Bezel */
-        .device-bezel {
-            border: 12px solid #1e293b;
-            border-radius: 2.5rem;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.8), inset 0 0 0 2px #334155;
-            position: relative;
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            border-radius: 4px;
         }
-        .device-notch {
-            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-            width: 100px; height: 24px; background: #1e293b;
-            border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
-            z-index: 10;
-        }
+        .range-r::-webkit-slider-runnable-track { background: linear-gradient(to right, #4a0000, #ff0000); }
+        .range-g::-webkit-slider-runnable-track { background: linear-gradient(to right, #004a00, #00ff00); }
+        .range-b::-webkit-slider-runnable-track { background: linear-gradient(to right, #00004a, #0000ff); }
+        .range-zoom::-webkit-slider-runnable-track { background: linear-gradient(to right, #334155, #cbd5e1); }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8 flex items-center justify-center">
+<body>
+    <div id="root"></div>
 
-    <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-        <!-- 왼쪽: 스마트폰 & 확대 캔버스 -->
-        <div class="flex flex-col items-center justify-center space-y-6">
-            <div class="text-center mb-2">
-                <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
-                    모니터 속 빛의 3원색
-                </h1>
-                <p class="text-slate-400 text-sm">스마트폰 화면을 현미경으로 확대해보면 어떤 모습일까요?</p>
-            </div>
+        // =========================================================================
+        // ⚠️ 선생님 구글 시트 웹앱 URL을 아래 따옴표 안에 넣어주세요!
+        // =========================================================================
+        const GOOGLE_SCRIPT_URL = ""; 
 
-            <!-- 스마트폰 형태 프레임 -->
-            <div class="device-bezel w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] bg-black overflow-hidden relative">
-                <div class="device-notch"></div>
-                <canvas id="screenCanvas" width="800" height="800" class="w-full h-full"></canvas>
-            </div>
+        const App = () => {
+            // RGB 및 Zoom 상태
+            const [r, setR] = useState(0);
+            const [g, setG] = useState(0);
+            const [b, setB] = useState(0);
+            const [zoom, setZoom] = useState(1); // 1 = 원본, 100 = 최대 화소 확대
+            
+            // 학생 폼 상태
+            const [classNum, setClassNum] = useState('');
+            const [studentNum, setStudentNum] = useState('');
+            const [name, setName] = useState('');
+            const [isSubmitting, setIsSubmitting] = useState(false);
 
-            <!-- 확대(Zoom) 컨트롤 -->
-            <div class="w-full max-w-[400px] glass-panel p-4 rounded-2xl border border-amber-500/30 bg-amber-900/10">
-                <div class="flex justify-between items-center mb-3">
-                    <label class="font-bold text-amber-400 flex items-center gap-2">
-                        <span class="text-xl">🔍</span> 돋보기 (디스플레이 확대)
-                    </label>
-                    <span id="zoom-val" class="text-amber-300 font-mono font-bold bg-amber-950 px-2 py-1 rounded">1x</span>
-                </div>
-                <input type="range" id="slider-zoom" min="1" max="150" value="1" step="1">
-                <div class="flex justify-between text-xs text-amber-500/70 mt-2 font-bold">
-                    <span>멀리서 보기 (단색)</span>
-                    <span>화소(Pixel) 관찰</span>
-                </div>
-            </div>
-        </div>
+            const canvasRef = useRef(null);
 
-        <!-- 오른쪽: 컨트롤 & 정보 패널 -->
-        <div class="glass-panel p-6 rounded-3xl flex flex-col justify-between">
-
-            <div class="space-y-8">
-                <!-- 상단: 현재 색상 미리보기 (단색) -->
-                <div class="flex items-center gap-4 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
-                    <div id="color-preview" class="w-20 h-20 rounded-xl shadow-inner border-2 border-slate-600"></div>
-                    <div>
-                        <div class="text-sm text-slate-400 font-bold mb-1">현재 화면이 내는 색</div>
-                        <div id="hex-val" class="text-2xl font-mono font-bold tracking-wider text-white">#000000</div>
-                        <div id="rgb-val" class="text-sm font-mono text-slate-400 mt-1">rgb(0, 0, 0)</div>
-                    </div>
-                </div>
-
-                <!-- 빠른 실험 버튼 -->
-                <div>
-                    <div class="text-sm font-bold text-slate-400 mb-3">빠른 실험 (가산혼합)</div>
-                    <div class="grid grid-cols-5 gap-2">
-                        <button onclick="setRGB(255,255,0)" class="btn-press py-2 bg-yellow-500 text-yellow-900 font-bold rounded-lg text-sm shadow-lg">노랑</button>
-                        <button onclick="setRGB(0,255,255)" class="btn-press py-2 bg-cyan-400 text-cyan-900 font-bold rounded-lg text-sm shadow-lg">청록</button>
-                        <button onclick="setRGB(255,0,255)" class="btn-press py-2 bg-fuchsia-500 text-fuchsia-900 font-bold rounded-lg text-sm shadow-lg">자홍</button>
-                        <button onclick="setRGB(255,255,255)" class="btn-press py-2 bg-white text-slate-900 font-bold rounded-lg text-sm shadow-lg">흰색</button>
-                        <button onclick="setRGB(0,0,0)" class="btn-press py-2 bg-slate-800 text-slate-300 border border-slate-600 font-bold rounded-lg text-sm">끄기</button>
-                    </div>
-                </div>
-
-                <!-- RGB 슬라이더 -->
-                <div class="space-y-5">
-                    <div>
-                        <div class="flex justify-between mb-2">
-                            <label class="font-bold text-red-400">Red (빨강 화소)</label>
-                            <span id="r-val" class="font-mono text-slate-300">0</span>
-                        </div>
-                        <input type="range" id="slider-r" min="0" max="255" value="0">
-                    </div>
-                    <div>
-                        <div class="flex justify-between mb-2">
-                            <label class="font-bold text-green-400">Green (초록 화소)</label>
-                            <span id="g-val" class="font-mono text-slate-300">0</span>
-                        </div>
-                        <input type="range" id="slider-g" min="0" max="255" value="0">
-                    </div>
-                    <div>
-                        <div class="flex justify-between mb-2">
-                            <label class="font-bold text-blue-400">Blue (파랑 화소)</label>
-                            <span id="b-val" class="font-mono text-slate-300">0</span>
-                        </div>
-                        <input type="range" id="slider-b" min="0" max="255" value="0">
-                    </div>
-                </div>
-            </div>
-
-            <hr class="border-slate-700 my-6">
-
-            <!-- 제출 폼 -->
-            <div>
-                <h3 class="font-bold text-cyan-400 mb-4">📨 결과 제출</h3>
-                <div class="flex gap-2 mb-4">
-                    <input type="number" id="input-class" placeholder="반" class="w-1/4 bg-slate-800 border border-slate-600 rounded-lg px-3 py-3 text-white focus:border-cyan-500 outline-none transition">
-                    <input type="number" id="input-num" placeholder="번호" class="w-1/4 bg-slate-800 border border-slate-600 rounded-lg px-3 py-3 text-white focus:border-cyan-500 outline-none transition">
-                    <input type="text" id="input-name" placeholder="이름" class="w-2/4 bg-slate-800 border border-slate-600 rounded-lg px-3 py-3 text-white focus:border-cyan-500 outline-none transition">
-                </div>
-                <button id="btn-submit" class="btn-press w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] text-lg flex justify-center items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    선생님께 제출하기
-                </button>
-            </div>
-
-        </div>
-    </div>
-
-    <script>
-        // ==========================================
-        // 🔧 선생님 설정: 아래 URL을 본인의 Apps Script 웹앱 URL로 변경하세요.
-        // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVBnWHXXRP06_tnqiBETMoyrTcdPqw06A4s5xOuiWNrGZJ0spqY7U0xid7clUyuk_51w/exec";
-
-        // UI Elements
-        const canvas = document.getElementById('screenCanvas');
-        const ctx = canvas.getContext('2d');
-        const sliderR = document.getElementById('slider-r');
-        const sliderG = document.getElementById('slider-g');
-        const sliderB = document.getElementById('slider-b');
-        const sliderZoom = document.getElementById('slider-zoom');
-
-        const valR = document.getElementById('r-val');
-        const valG = document.getElementById('g-val');
-        const valB = document.getElementById('b-val');
-        const valZoom = document.getElementById('zoom-val');
-
-        const preview = document.getElementById('color-preview');
-        const hexVal = document.getElementById('hex-val');
-        const rgbVal = document.getElementById('rgb-val');
-
-        function numToHex(n) {
-            const hex = parseInt(n).toString(16).toUpperCase();
-            return hex.length === 1 ? '0' + hex : hex;
-        }
-
-        // 색상 업데이트 & UI 반영
-        function updateUI() {
-            const r = sliderR.value;
-            const g = sliderG.value;
-            const b = sliderB.value;
-            const zoom = sliderZoom.value;
-
-            valR.innerText = r;
-            valG.innerText = g;
-            valB.innerText = b;
-            valZoom.innerText = zoom + 'x';
-
-            const hex = '#' + numToHex(r) + numToHex(g) + numToHex(b);
-            hexVal.innerText = hex;
-            rgbVal.innerText = `rgb(${r}, ${g}, ${b})`;
-            preview.style.backgroundColor = hex;
-
-            drawMonitor(r, g, b, zoom);
-        }
-
-        // 캔버스에 디스플레이 화소 그리기
-        function drawMonitor(r, g, b, zoom) {
-            const width = canvas.width;
-            const height = canvas.height;
-            ctx.clearRect(0, 0, width, height);
-
-            // 줌 레벨이 낮을 때 (축소): 완벽한 단색 칠하기
-            if (zoom < 10) {
-                ctx.globalAlpha = 1.0;
-                ctx.fillStyle = \`rgb(\${r}, \${g}, \${b})\`;
-                ctx.fillRect(0, 0, width, height);
-
-                // 확대 시 화소(그리드) 서서히 나타나게 페이드인 (zoom 2 ~ 10 구간)
-                if (zoom > 2) {
-                    ctx.globalAlpha = (zoom - 2) / 8;
-                    drawPixelGrid(r, g, b, zoom, width, height);
-                }
-            } 
-            // 줌 레벨이 높을 때 (확대): 화소만 선명하게 그리기
-            else {
-                ctx.globalAlpha = 1.0;
-                drawPixelGrid(r, g, b, zoom, width, height);
-            }
-        }
-
-        // 서브픽셀(Red, Green, Blue) 그리드 그리기 함수
-        function drawPixelGrid(r, g, b, zoom, width, height) {
-            ctx.save();
-            ctx.translate(width / 2, height / 2); // 중심 기준 확대
-
-            // zoom 슬라이더 값이 커질수록 스케일 기하급수적 증가 (더 깊게 줌인되는 느낌)
-            const scale = Math.pow(zoom, 1.2) * 0.5;
-            ctx.scale(scale, scale);
-
-            const baseSize = 4; // 기본 픽셀 사이즈
-            const subWidth = baseSize / 3;
-            const gap = baseSize * 0.08; // 소자 사이의 검은 틈새 (베젤)
-
-            // 화면에 보이는 영역 계산
-            const viewW = width / scale;
-            const viewH = height / scale;
-            const startX = -viewW / 2;
-            const endX = viewW / 2;
-            const startY = -viewH / 2;
-            const endY = viewH / 2;
-
-            // 디스플레이 기본 바탕 (검정색 틈새)
-            ctx.fillStyle = '#0a0a0a';
-            ctx.fillRect(startX, startY, viewW, viewH);
-
-            const startC = Math.floor(startX / baseSize) - 1;
-            const endC = Math.ceil(endX / baseSize) + 1;
-            const startR = Math.floor(startY / baseSize) - 1;
-            const endR = Math.ceil(endY / baseSize) + 1;
-
-            // 격자 반복
-            for (let c = startC; c <= endC; c++) {
-                for (let rIdx = startR; rIdx <= endR; rIdx++) {
-                    const x = c * baseSize;
-                    const y = rIdx * baseSize;
-
-                    // R 서브픽셀
-                    ctx.fillStyle = \`rgb(\${r}, 0, 0)\`;
-                    ctx.fillRect(x, y, subWidth - gap, baseSize - gap);
-
-                    // G 서브픽셀
-                    ctx.fillStyle = \`rgb(0, \${g}, 0)\`;
-                    ctx.fillRect(x + subWidth, y, subWidth - gap, baseSize - gap);
-
-                    // B 서브픽셀
-                    ctx.fillStyle = \`rgb(0, 0, \${b})\`;
-                    ctx.fillRect(x + subWidth * 2, y, subWidth - gap, baseSize - gap);
-                }
-            }
-            ctx.restore();
-        }
-
-        // 빠른 실험 버튼 클릭
-        window.setRGB = function(r, g, b) {
-            sliderR.value = r; sliderG.value = g; sliderB.value = b;
-            updateUI();
-        }
-
-        // 이벤트 리스너 등록
-        sliderR.addEventListener('input', updateUI);
-        sliderG.addEventListener('input', updateUI);
-        sliderB.addEventListener('input', updateUI);
-        sliderZoom.addEventListener('input', updateUI);
-
-        // 초기 화면 그리기
-        updateUI();
-
-        // ==========================================
-        // 구글 시트 전송 로직
-        // ==========================================
-        document.getElementById('btn-submit').addEventListener('click', async () => {
-            const classNum = document.getElementById('input-class').value;
-            const studentNum = document.getElementById('input-num').value;
-            const name = document.getElementById('input-name').value;
-
-            if (!classNum || !studentNum || !name) {
-                alert("반, 번호, 이름을 모두 입력해주세요!");
-                return;
-            }
-
-            const r = sliderR.value;
-            const g = sliderG.value;
-            const b = sliderB.value;
-            const hex = '#' + numToHex(r) + numToHex(g) + numToHex(b);
-
-            const payload = {
-                classNum: classNum,
-                studentNum: studentNum,
-                name: name,
-                hex: hex
+            // HEX 코드 계산
+            const getHex = () => {
+                const toHex = (c) => {
+                    const hex = c.toString(16).toUpperCase();
+                    return hex.length === 1 ? "0" + hex : hex;
+                };
+                return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
             };
 
-            if (GOOGLE_SCRIPT_URL === "여기에_본인_Apps_Script_웹앱_URL_붙여넣기") {
-                alert(\`[테스트 모드]
+            // 캔버스에 디스플레이 화소 그리기
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const width = canvas.width;
+                const height = canvas.height;
 
-제출될 색상: \${hex}
-선생님께서 구글 스크립트 URL을 연동하시면 실제 시트로 전송됩니다.\`);
-                return;
-            }
+                // 초기화
+                ctx.clearRect(0, 0, width, height);
 
-            const btn = document.getElementById('btn-submit');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<svg class="animate-spin w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> 전송 중...';
-            btn.disabled = true;
+                // Zoom 배율에 따른 화면 분할 처리
+                // zoom 1 ~ 10: 단색에서 화소 형태로 서서히 전환 (알파 페이드)
+                // zoom 10 ~ 100: 화소가 점점 커짐
+                
+                const showPixelThreshold = 10;
+                let solidAlpha = 1;
+                let pixelAlpha = 0;
 
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                alert("결과가 성공적으로 제출되었습니다!");
+                if (zoom <= showPixelThreshold) {
+                    solidAlpha = 1 - ((zoom - 1) / (showPixelThreshold - 1));
+                    pixelAlpha = 1 - solidAlpha;
+                } else {
+                    solidAlpha = 0;
+                    pixelAlpha = 1;
+                }
 
-                // 입력칸 초기화 (옵션)
-                // document.getElementById('input-class').value = '';
-                // document.getElementById('input-num').value = '';
-                // document.getElementById('input-name').value = '';
+                // 1. 일반 단색 렌더링 (멀리서 볼 때)
+                if (solidAlpha > 0) {
+                    ctx.globalAlpha = solidAlpha;
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.fillRect(0, 0, width, height);
+                }
 
-            } catch (err) {
-                alert("전송 중 오류가 발생했습니다. 네트워크를 확인하세요.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        });
+                // 2. RGB 서브픽셀 렌더링 (확대했을 때)
+                if (pixelAlpha > 0) {
+                    ctx.globalAlpha = pixelAlpha;
+                    ctx.fillStyle = '#000000'; // 화소 사이의 검은 배경 (블랙매트릭스)
+                    ctx.fillRect(0, 0, width, height);
+
+                    // 셀 크기 계산 (최소 10px ~ 최대 100px)
+                    const baseCellSize = 10;
+                    const maxCellSize = 150;
+                    const zoomFactor = Math.max(0, zoom - showPixelThreshold) / (100 - showPixelThreshold);
+                    const cellSize = baseCellSize + (maxCellSize - baseCellSize) * Math.pow(zoomFactor, 1.5);
+
+                    const padding = cellSize * 0.05;
+                    const subWidth = (cellSize - (padding * 4)) / 3;
+                    const subHeight = cellSize - (padding * 2);
+
+                    // 성능을 위해 화면에 보이는 영역만 그리기
+                    for (let y = 0; y < height; y += cellSize) {
+                        for (let x = 0; x < width; x += cellSize) {
+                            // R 화소
+                            ctx.fillStyle = `rgb(${r}, 0, 0)`;
+                            ctx.fillRect(x + padding, y + padding, subWidth, subHeight);
+                            // G 화소
+                            ctx.fillStyle = `rgb(0, ${g}, 0)`;
+                            ctx.fillRect(x + padding * 2 + subWidth, y + padding, subWidth, subHeight);
+                            // B 화소
+                            ctx.fillStyle = `rgb(0, 0, ${b})`;
+                            ctx.fillRect(x + padding * 3 + subWidth * 2, y + padding, subWidth, subHeight);
+                        }
+                    }
+                }
+                
+                // 알파값 복구
+                ctx.globalAlpha = 1.0;
+            }, [r, g, b, zoom]);
+
+            // 빠른 색상 설정
+            const setPreset = (pr, pg, pb) => {
+                setR(pr); setG(pg); setB(pb);
+                setZoom(1); // 색상 변경시 한눈에 보이게 축소
+            };
+
+            const handleSubmit = async () => {
+                if (!classNum || !studentNum || !name) {
+                    alert("반, 번호, 이름을 모두 입력해주세요!");
+                    return;
+                }
+                if (!GOOGLE_SCRIPT_URL) {
+                    alert(`[제출 테스트]\n학번: ${classNum}반 ${studentNum}번\n이름: ${name}\n만든 색: ${getHex()}`);
+                    return;
+                }
+
+                setIsSubmitting(true);
+                const payload = {
+                    classNum,
+                    studentNum,
+                    name,
+                    hex: getHex()
+                };
+
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    alert("성공적으로 전송되었습니다! 화면을 확인하세요.");
+                    // 제출 후 폼 초기화 (색상은 유지)
+                    setClassNum('');
+                    setStudentNum('');
+                    setName('');
+                } catch (err) {
+                    alert("전송 실패: 인터넷 연결을 확인하세요.");
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8">
+                    <header className="max-w-5xl mx-auto mb-6 text-center">
+                        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                            모니터 화소(Pixel) 색상 맞추기
+                        </h1>
+                        <p className="text-slate-400 mt-2">선생님이 제시한 화면 색을 RGB 빛을 조절해 똑같이 만드세요!</p>
+                    </header>
+
+                    <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-6">
+                        
+                        {/* 왼쪽: 모니터 시뮬레이션 */}
+                        <div className="flex-1 flex flex-col items-center">
+                            <div className="glass-panel p-4 rounded-3xl w-full max-w-[400px]">
+                                {/* 스마트폰/모니터 외형 느낌 */}
+                                <div className="border-4 border-slate-800 rounded-2xl bg-black p-2 shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 bg-slate-800 rounded-b-xl z-10"></div>
+                                    <canvas 
+                                        ref={canvasRef} 
+                                        width={400} 
+                                        height={600} 
+                                        className="w-full h-auto aspect-[2/3] rounded-lg bg-black"
+                                    ></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 오른쪽: 컨트롤 패널 */}
+                        <div className="flex-1 flex flex-col gap-4">
+                            
+                            {/* 확대(Zoom) 컨트롤 */}
+                            <div className="glass-panel p-5 rounded-2xl border border-slate-700">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="font-bold text-slate-200">🔍 디스플레이 확대 현미경</span>
+                                    <span className="text-sm font-mono bg-slate-800 px-2 py-1 rounded text-cyan-400">{zoom}x</span>
+                                </div>
+                                <input 
+                                    type="range" min="1" max="100" value={zoom} 
+                                    onChange={(e) => setZoom(Number(e.target.value))}
+                                    className="range-zoom mt-2"
+                                />
+                                <p className="text-xs text-slate-400 mt-2">슬라이더를 당겨 화면을 이루는 RGB 화소를 관찰하세요.</p>
+                            </div>
+
+                            {/* RGB 슬라이더 */}
+                            <div className="glass-panel p-5 rounded-2xl border border-slate-700">
+                                <h2 className="font-bold mb-4 text-lg">빛의 세기 조절</h2>
+                                <div className="space-y-6">
+                                    <div>
+                                        <div className="flex justify-between font-mono text-red-400 mb-1">
+                                            <span>Red</span><span>{r}</span>
+                                        </div>
+                                        <input type="range" className="range-r" min="0" max="255" value={r} onChange={(e) => setR(Number(e.target.value))} />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between font-mono text-green-400 mb-1">
+                                            <span>Green</span><span>{g}</span>
+                                        </div>
+                                        <input type="range" className="range-g" min="0" max="255" value={g} onChange={(e) => setG(Number(e.target.value))} />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between font-mono text-blue-400 mb-1">
+                                            <span>Blue</span><span>{b}</span>
+                                        </div>
+                                        <input type="range" className="range-b" min="0" max="255" value={b} onChange={(e) => setB(Number(e.target.value))} />
+                                    </div>
+                                </div>
+                                
+                                {/* 빠른 실험 칩 */}
+                                <div className="mt-6 flex flex-wrap gap-2">
+                                    <button onClick={() => setPreset(255,255,0)} className="px-3 py-1 bg-slate-800 text-yellow-400 rounded-lg text-sm border border-yellow-400/30">노랑 (R+G)</button>
+                                    <button onClick={() => setPreset(0,255,255)} className="px-3 py-1 bg-slate-800 text-cyan-400 rounded-lg text-sm border border-cyan-400/30">청록 (G+B)</button>
+                                    <button onClick={() => setPreset(255,0,255)} className="px-3 py-1 bg-slate-800 text-pink-400 rounded-lg text-sm border border-pink-400/30">자홍 (R+B)</button>
+                                    <button onClick={() => setPreset(255,255,255)} className="px-3 py-1 bg-slate-800 text-white rounded-lg text-sm border border-white/30">흰색 (R+G+B)</button>
+                                    <button onClick={() => setPreset(0,0,0)} className="px-3 py-1 bg-slate-800 text-slate-400 rounded-lg text-sm border border-slate-600">끄기</button>
+                                </div>
+                            </div>
+
+                            {/* 제출 폼 */}
+                            <div className="glass-panel p-5 rounded-2xl border border-slate-700 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h2 className="font-bold mb-4 text-lg">결과 제출</h2>
+                                    <div className="flex gap-2 mb-3">
+                                        <input type="number" placeholder="반" value={classNum} onChange={(e)=>setClassNum(e.target.value)} className="w-20 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500" />
+                                        <input type="number" placeholder="번호" value={studentNum} onChange={(e)=>setStudentNum(e.target.value)} className="w-20 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500" />
+                                        <input type="text" placeholder="이름" value={name} onChange={(e)=>setName(e.target.value)} className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500" />
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-slate-800/50 p-3 rounded-lg border border-slate-700 mb-4">
+                                        <div className="w-8 h-8 rounded-full shadow-inner border border-slate-600" style={{ backgroundColor: getHex() }}></div>
+                                        <span className="font-mono text-slate-300">{getHex()}</span>
+                                        <span className="text-xs text-slate-400 ml-auto">이 색상으로 제출됩니다.</span>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting}
+                                    className={`btn-press w-full py-4 font-bold rounded-xl shadow-lg text-lg flex justify-center items-center ${isSubmitting ? 'bg-slate-600 text-slate-400' : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'}`}
+                                >
+                                    {isSubmitting ? '전송 중...' : '📨 제출하기'}
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
